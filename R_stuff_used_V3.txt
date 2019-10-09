@@ -1,0 +1,1016 @@
+#Start of new session
+#load packages
+library(phyloseq);packageVersion("phyloseq")
+library(ggplot2)
+library(corncob)
+library(DESeq2);packageVersion("DESeq2")
+library(vegan)
+
+#load data
+ASV_Count <- as.matrix(read.table("C:/Users/Tyler/Documents/Grad Skool/ASVs_counts.txt"))
+ASV_Taxa <- as.matrix(read.table("C:/Users/Tyler/Documents/Grad Skool/ASVs_taxonomy.txt"))
+Sample_Data <- read.csv("c:/Users/Tyler/Documents/Grad Skool/sample_dataframe.csv", row.names=1)
+options(max.print=1500)
+
+#make phyloseq object with loaded data
+ps <- phyloseq(otu_table(ASV_Count, taxa_are_rows=TRUE), 
+               sample_data(Sample_Data), 
+               tax_table(ASV_Taxa),sample_names(Sample_Data))
+
+ps_graph <- ps
+sample_data(ps_graph)$MilkType <- gsub("Raw hLZ", "hLZ Milk",sample_data(ps_graph)$MilkType)
+sample_data(ps_graph)$MilkType <- gsub("Raw WT", "Wild Type Milk",sample_data(ps_graph)$MilkType)
+sample_data(ps_graph)$MilkType <- gsub("WT \\+ LZ", "Lysozyme Added Milk",sample_data(ps_graph)$MilkType)
+
+ps_prune = filter_taxa(ps, function(x) sum(x ) > (0.2*length(x)), TRUE)
+ps_prune_no_lactococcus = subset_taxa(ps_prune, Genus!="g__Lactococcus")
+ps_prune_no_lactococcus = subset_samples(ps_prune_no_lactococcus, SamType=="Goat Cheese")
+ps_prune_cheese= subset_samples(ps_prune, SamType=="Goat Cheese")
+
+
+#ordination plot
+ps.ord <- ordinate(ps_graph, "NMDS", "bray")
+p1 = plot_ordination(ps_graph, ps.ord, type="taxa", color="Phylum", title="taxa")
+print(p1)
+p2 = plot_ordination(ps_graph, ps.ord, type="samples", color="MilkType", shape="SamType") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Samples")
+
+#cheese ordination
+ps_cheese <- subset_samples(ps_graph, SamType=="Goat Cheese")
+ps_cheese.ord <- ordinate(ps_cheese, "NMDS", "bray")
+p1 = plot_ordination(ps_cheese, ps_cheese.ord, type="taxa", color="Phylum", title="taxa")
+print(p1)
+p2 = plot_ordination(ps_cheese, ps_cheese.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Cheeses")
+
+#milk ordination
+ps_milk <- subset_samples(ps_graph, SamType=="Goat Milk")
+ps_milk.ord <- ordinate(ps_milk, "NMDS", "bray")
+p1 = plot_ordination(ps_milk, ps_milk.ord, type="taxa", color="Phylum", title="taxa")
+print(p1)
+p2 = plot_ordination(ps_milk, ps_milk.ord, type="samples", color="MilkType") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordinaton of Milk")
+
+#ordination of pruned dataset
+ps_prune_graph = filter_taxa(ps_graph, function(x) sum(x ) > (0.2*length(x)), TRUE)
+ps_prune.ord <- ordinate(ps_prune_graph, "NMDS", "bray")
+p2 = plot_ordination(ps_prune_graph, ps_prune.ord, type="samples", color="MilkType", shape="SamType" + scale_fill_discrete(name = "Sample Type"))
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Samples")
+ps_prune_cheese <- subset_samples(ps_prune_graph, SamType=="Goat Cheese")
+ps_prune_cheese.ord <- ordinate(ps_prune_cheese, "NMDS", "bray")
+p2 = plot_ordination(ps_prune_cheese, ps_prune_cheese.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Cheeses")
+ps_prune_milk <- subset_samples(ps_prune_graph, SamType=="Goat Milk")
+ps_prune_milk.ord <- ordinate(ps_prune_milk, "NMDS", "bray")
+p2 = plot_ordination(ps_prune_milk, ps_prune_milk.ord, type="samples", color="MilkType") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordinaton of Milk")
+
+#weekly ordination cheese
+ps_prune_cheese_w1 = subset_samples(ps_prune_cheese, When == "Week 1")
+ps_prune_cheese_w1.ord <- ordinate(ps_prune_cheese_w1, "NMDS", "bray")
+p2 = plot_ordination(ps_prune_cheese_w1, ps_prune_cheese.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Cheeses w1 Subset")
+p2 = plot_ordination(ps_prune_cheese_w1, ps_prune_cheese_w1.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Week 1 Cheeses")
+ps_prune_cheese_w2 = subset_samples(ps_prune_cheese, When == "Week 2")
+ps_prune_cheese_w2.ord <- ordinate(ps_prune_cheese_w2, "NMDS", "bray")
+p2 = plot_ordination(ps_prune_cheese_w2, ps_prune_cheese.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Cheeses w2 Subset")
+p2 = plot_ordination(ps_prune_cheese_w2, ps_prune_cheese_w2.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Week 2 Cheeses")
+ps_prune_cheese_w3 = subset_samples(ps_prune_cheese, When == "Week 3")
+ps_prune_cheese_w3.ord <- ordinate(ps_prune_cheese_w3, "NMDS", "bray")
+p2 = plot_ordination(ps_prune_cheese_w3, ps_prune_cheese.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Cheeses w3 Subset")
+p2 = plot_ordination(ps_prune_cheese_w3, ps_prune_cheese_w3.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Week 3 Cheeses")
+ps_prune_cheese_w4 = subset_samples(ps_prune_cheese, When == "Week 4")
+ps_prune_cheese_w4.ord <- ordinate(ps_prune_cheese_w4, "NMDS", "bray")
+p2 = plot_ordination(ps_prune_cheese_w4, ps_prune_cheese.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Cheeses w4 Subset")
+p2 = plot_ordination(ps_prune_cheese_w4, ps_prune_cheese_w4.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Week 4 Cheeses")
+ps_prune_cheese_w5 = subset_samples(ps_prune_cheese, When == "Week 5")
+ps_prune_cheese_w5.ord <- ordinate(ps_prune_cheese_w5, "NMDS", "bray")
+p2 = plot_ordination(ps_prune_cheese_w5, ps_prune_cheese.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Cheeses w5 Subset")
+p2 = plot_ordination(ps_prune_cheese_w5, ps_prune_cheese_w5.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Week 5 Cheeses")
+ps_prune_cheese_w6 = subset_samples(ps_prune_cheese, When == "Week 6")
+ps_prune_cheese_w6.ord <- ordinate(ps_prune_cheese_w6, "NMDS", "bray")
+p2 = plot_ordination(ps_prune_cheese_w6, ps_prune_cheese.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Cheeses w6 Subset")
+p2 = plot_ordination(ps_prune_cheese_w6, ps_prune_cheese_w6.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Week 6 Cheeses")
+ps_prune_cheese_w7 = subset_samples(ps_prune_cheese, When == "Week 7")
+ps_prune_cheese_w7.ord <- ordinate(ps_prune_cheese_w7, "NMDS", "bray")
+p2 = plot_ordination(ps_prune_cheese_w7, ps_prune_cheese.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Cheeses w7 Subset")
+p2 = plot_ordination(ps_prune_cheese_w7, ps_prune_cheese_w7.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Week 7 Cheeses")
+ps_prune_cheese_w8 = subset_samples(ps_prune_cheese, When == "Week 8")
+ps_prune_cheese_w8.ord <- ordinate(ps_prune_cheese_w8, "NMDS", "bray")
+p2 = plot_ordination(ps_prune_cheese_w8, ps_prune_cheese.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Cheeses w8 Subset")
+p2 = plot_ordination(ps_prune_cheese_w8, ps_prune_cheese_w8.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Week 8 Cheeses")
+ps_prune_cheese_core = subset_samples(ps_prune_cheese, When =="Core Sample")
+ps_prune_cheese_core.ord <- ordinate(ps_prune_cheese_core, "NMDS", "bray")
+p2 = plot_ordination(ps_prune_cheese_core, ps_prune_cheese.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Cheeses Core Subset")
+p2 = plot_ordination(ps_prune_cheese_core, ps_prune_cheese_core.ord, type="samples", color="MilkType", shape="Spike") 
+p2 + geom_point(size=3) + ggtitle("Bray-NMDS Ordination of Core Sample Cheeses")
+
+#rarefaction
+rarecurve(t(otu_table(ps)),label=FALSE)
+rarecurve(t(otu_table(ps_prune)),label=FALSE)
+
+#stacked bar charts
+#for cheese
+ps_prune_r =  transform_sample_counts(ps_prune, function(x) x/sum(x))
+variable1 = as.character(get_variable(ps_prune_r, "Box"))
+variable2 = as.character(get_variable(ps_prune_r, "When"))
+variable3 = as.character(get_variable(ps_prune_r, "Spike"))
+sample_data(ps_prune_r)$NewPastedVar <- mapply(paste0, variable1, variable2, 
+    collapse = "_")
+ps_prune_r_m <- merge_samples(ps_prune_r, "NewPastedVar")
+ps_prune_r_m = subset_samples(ps_prune_r_m, Box!="NA")
+
+sample_data(ps_prune_r_m) <- subset(sample_data(ps_prune_r_m), select = -c(Cheese,When,MilkID,Identity,SamType,ProcessGroup,NewPastedVar))
+sample_data(ps_prune_r_m)$Spike <- gsub("1","No Spike",sample_data(ps_prune_r_m)$Spike)
+sample_data(ps_prune_r_m)$Spike <- gsub("2","Spiked",sample_data(ps_prune_r_m)$Spike)
+sample_data(ps_prune_r_m)$MilkType <- gsub("2","Wild Type Milk",sample_data(ps_prune_r_m)$MilkType)
+sample_data(ps_prune_r_m)$MilkType <- gsub("3","Lysozyme Added Milk",sample_data(ps_prune_r_m)$MilkType)
+sample_data(ps_prune_r_m)$MilkType <- gsub("1","hLZ Milk",sample_data(ps_prune_r_m)$MilkType)
+sample_data(ps_prune_r_m)$Week <- gsub("10", "Core Sample",sample_data(ps_prune_r_m)$Week)
+sample_data(ps_prune_r_m)$Week <- gsub("2", "Week 1",sample_data(ps_prune_r_m)$Week)
+sample_data(ps_prune_r_m)$Week <- gsub("3", "Week 2",sample_data(ps_prune_r_m)$Week)
+sample_data(ps_prune_r_m)$Week <- gsub("4", "Week 3",sample_data(ps_prune_r_m)$Week)
+sample_data(ps_prune_r_m)$Week <- gsub("5", "Week 4",sample_data(ps_prune_r_m)$Week)
+sample_data(ps_prune_r_m)$Week <- gsub("6", "Week 5",sample_data(ps_prune_r_m)$Week)
+sample_data(ps_prune_r_m)$Week <- gsub("7", "Week 6",sample_data(ps_prune_r_m)$Week)
+sample_data(ps_prune_r_m)$Week <- gsub("8", "Week 7",sample_data(ps_prune_r_m)$Week)
+sample_data(ps_prune_r_m)$Week <- gsub("9", "Week 8",sample_data(ps_prune_r_m)$Week)
+
+sample_data(ps_prune_r_m)$Box <- gsub("1", "Wild Type Spiked",sample_data(ps_prune_r_m)$Box)
+sample_data(ps_prune_r_m)$Box <- gsub("2", "Added LZ Spiked",sample_data(ps_prune_r_m)$Box)
+sample_data(ps_prune_r_m)$Box <- gsub("3", "hLZ Milk Spiked",sample_data(ps_prune_r_m)$Box)
+sample_data(ps_prune_r_m)$Box <- gsub("4", "Wild Type No Spike",sample_data(ps_prune_r_m)$Box)
+sample_data(ps_prune_r_m)$Box <- gsub("5", "Added LZ No Spike",sample_data(ps_prune_r_m)$Box)
+sample_data(ps_prune_r_m)$Box <- gsub("6", "hLZ Milk No Spike",sample_data(ps_prune_r_m)$Box)
+
+ps_prune_r_m_nl = subset_taxa(ps_prune_r_m, Genus!="g__Lactococcus")
+ps_prune_r_m_nl_phylum = tax_glom(ps_prune_r_m_nl, taxrank="Phylum")
+ps_prune_r_m_nl_phylum_r = transform_sample_counts(ps_prune_r_m_nl_phylum, function(x) x/sum(x))
+plot_bar(ps_prune_r_m_nl_phylum_r, x="Week", fill="Phylum") +facet_wrap(~Box)+geom_bar(stat="identity") +theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5))+ggtitle("Relative Abundances of Phyla for Cheese Samples")
+ps_prune_r_m_nl_genus = tax_glom(ps_prune_r_m_nl, taxrank="Genus")
+ps_prune_r_m_nl_genus = subset_taxa(ps_prune_r_m_nl_genus, Genus!="g__")
+ps_prune_r_m_nl_genus_r = transform_sample_counts(ps_prune_r_m_nl_genus, function(x) x/sum(x))
+ps_prune_r_m_nl_genus_r = subset_samples(ps_prune_r_m_nl_genus_r, Box != "NA")
+ps_prune_r_m_nl_genus_r_spiked = subset_samples(ps_prune_r_m_nl_genus_r, Spike == "Spiked")
+ps_prune_r_m_nl_genus_r_unspiked = subset_samples(ps_prune_r_m_nl_genus_r, Spike == "No Spike")
+plot_bar(ps_prune_r_m_nl_genus_r_spiked, x="Week", fill="Genus") +facet_wrap(~MilkType)+geom_bar(stat="identity")+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = .25))+ggtitle("Relative Abundances of Genera for Clostridia Spiked Cheeses")
+plot_bar(ps_prune_r_m_nl_genus_r_unspiked, x="Week", fill="Genus") +facet_wrap(~MilkType)+geom_bar(stat="identity")+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = .25))+ggtitle("Relative Abundances of Genera for Non-Spiked Cheeses")
+#for milk
+ps_prune_r_milk = subset_samples(ps_prune_r, SamType != "Goat Cheese")
+ps_prune_r_milk = subset_samples(ps_prune_r_milk, Spike == "No Spike")
+ps_prune_r_milk_m <- merge_samples(ps_prune_r, "MilkType")
+sample_data(ps_prune_r_milk_m)$MilkType <- gsub("1","hLZ Milk",sample_data(ps_prune_r_milk_m)$MilkType)
+sample_data(ps_prune_r_milk_m)$MilkType <- gsub("2","Wild Type Milk",sample_data(ps_prune_r_milk_m)$MilkType)
+sample_data(ps_prune_r_milk_m)$MilkType <- gsub("3","Lysozyme Added Milk",sample_data(ps_prune_r_milk_m)$MilkType)
+ps_prune_r_milk_m_nl = subset_taxa(ps_prune_r_milk_m, Genus!="g__Lactococcus")
+ps_prune_r_milk_m_nl_phyla = tax_glom(ps_prune_r_milk_m_nl, taxrank="Phylum")
+ps_prune_r_milk_m_nl_phyla_r = transform_sample_counts(ps_prune_r_milk_m_nl_phyla, function(x) x/sum(x))
+plot_bar(ps_prune_r_milk_m_nl_phyla_r, x="MilkType", fill="Phylum")+geom_bar(stat="identity")+theme(axis.text.x = element_text(angle = 0, hjust = .5, vjust = .25))+ggtitle("Relative Abundances of Phyla for Milk")
+ps_prune_r_milk_m_phyla = tax_glom(ps_prune_r_milk_m, taxrank="Phylum")
+ps_prune_r_milk_m_phyla_r = transform_sample_counts(ps_prune_r_milk_m_phyla, function(x) x/sum(x))
+plot_bar(ps_prune_r_milk_m_phyla_r, x="MilkType", fill="Phylum")+geom_bar(stat="identity")+theme(axis.text.x = element_text(angle = 0, hjust = .5, vjust = .25))+ggtitle("Relative Abundances of Phyla for Milk lactococcus included")
+ps_prune_r_milk_m_nl_genus = tax_glom(ps_prune_r_milk_m_nl, taxrank="Genus")
+ps_prune_r_milk_m_nl_genus = subset_taxa(ps_prune_r_milk_m_nl_genus, Genus!="g__")
+ps_prune_r_milk_m_nl_genus_r = transform_sample_counts(ps_prune_r_milk_m_nl_genus, function(x) x/sum(x))
+plot_bar(ps_prune_r_milk_m_nl_genus_r, x="MilkType", fill="Genus")+geom_bar(stat="identity")+theme(axis.text.x = element_text(angle = 0, hjust = .5, vjust = .25))+ggtitle("Relative Abundances of Genera for Milk")
+ps_prune_r_milk_m_genus = tax_glom(ps_prune_r_milk_m, taxrank="Genus")
+ps_prune_r_milk_m_genus = subset_taxa(ps_prune_r_milk_m_genus, Genus!="g__")
+ps_prune_r_milk_m_genus_r = transform_sample_counts(ps_prune_r_milk_m_genus, function(x) x/sum(x))
+plot_bar(ps_prune_r_milk_m_genus_r, x="MilkType", fill="Genus")+geom_bar(stat="identity")+theme(axis.text.x = element_text(angle = 0, hjust = .5, vjust = .25))+ggtitle("Relative Abundances of Genera for Milk Lactococcus Included")
+
+#lactococcus relative abudnace over time
+ps_prune_r_m_glom = tax_glom(ps_prune_r_m,taxrank = "Genus")
+ps_prune_r_m_glom_r = transform_sample_counts(ps_prune_r_m_glom, function(x) x/sum(x))
+ps_prune_r_m_glom_r_lactococcus = subset_taxa(ps_prune_r_m_glom_r, Genus == "g__Lactococcus")
+
+ps_glom = tax_glom(ps,taxrank="Genus")
+ps_glom_r = transform_sample_counts(ps_glom, function(x) x/sum(x))
+ps_glom_r_lactocococus = subset_taxa(ps_glom_r, Genus == "g__Lactococcus")
+
+#DESEQ2 Analysis
+
+gmMean = function(x, na.rm=TRUE){
+  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))
+}
+alpha = 0.1
+
+#DA for unspiked cheeses (lactococcus included)
+ps_prune_cheese_no_spike = subset_samples(ps_prune_cheese, Spike=="No Spike")
+ps_prune_cheese_no_spike_dds = phyloseq_to_deseq2(ps_prune_cheese_no_spike, ~ MilkType)
+ps_prune_cheese_no_spike_dds = DESeq(ps_prune_cheese_no_spike_dds, test="Wald", fitType="parametric")
+res_ns1 <- results(ps_prune_cheese_no_spike_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_ns1 = res_ns1[which(res_ns1$padj < alpha), ]
+if(nrow(sigtab_ns1)>0)
+{
+sigtab_ns1 = cbind(as(sigtab_ns1, "data.frame"), as(tax_table(ps_prune_cheese_no_spike)[rownames(sigtab_ns1), ], "matrix"))
+write.csv(sigtab_ns1, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/ns1.csv"))
+}
+#
+res_ns2 <- results( ps_prune_cheese_no_spike_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_ns2 = res_ns2[which(res_ns2$padj < alpha), ]
+if(nrow(sigtab_ns2)>0)
+{
+sigtab_ns2 = cbind(as(sigtab_ns2, "data.frame"), as(tax_table(ps_prune_cheese_no_spike)[rownames(sigtab_ns2), ], "matrix"))
+write.csv(sigtab_ns2, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/ns2.csv"))
+}
+#
+res_ns3 <- results( ps_prune_cheese_no_spike_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_ns3 = res_ns3[which(res_ns3$padj < alpha), ]
+if(nrow(sigtab_ns3)>0)
+{
+sigtab_ns3 = cbind(as(sigtab_ns3, "data.frame"), as(tax_table(ps_prune_cheese_no_spike)[rownames(sigtab_ns3), ], "matrix"))
+write.csv(sigtab_ns3, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/ns3.csv"))
+}
+#
+ps_prune_cheese_no_spike_w1 = subset_samples(ps_prune_cheese_no_spike, When=="Week 1")
+ps_prune_cheese_no_spike_w1_dds = phyloseq_to_deseq2(ps_prune_cheese_no_spike_w1, ~ MilkType)
+ps_prune_cheese_no_spike_w1_dds = DESeq(ps_prune_cheese_no_spike_w1_dds, test="Wald", fitType="parametric")
+res_ns1_w1 <- results(ps_prune_cheese_no_spike_w1_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_ns1_w1 = res_ns1_w1[which(res_ns1_w1$padj < alpha), ]
+if(nrow(sigtab_ns1_w1)>0)
+{
+sigtab_ns1_w1 = cbind(as(sigtab_ns1_w1, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w1)[rownames(sigtab_ns1_w1), ], "matrix"))
+write.csv(sigtab_ns1_w1, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns1_w1.csv"))
+}
+#many sig at .5, none at .1
+res_ns2_w1 <- results( ps_prune_cheese_no_spike_w1_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_ns2_w1 = res_ns2_w1[which(res_ns2_w1$padj < alpha), ]
+if(nrow(sigtab_ns2_w1)>0)
+{
+sigtab_ns2_w1 = cbind(as(sigtab_ns2_w1, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w1)[rownames(sigtab_ns2_w1), ], "matrix"))
+write.csv(sigtab_ns2_w1, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns2_w1.csv"))
+}
+#
+res_ns3_w1 <- results( ps_prune_cheese_no_spike_w1_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_ns3_w1 = res_ns3_w1[which(res_ns3_w1$padj < alpha), ]
+if(nrow(sigtab_ns3_w1)>0)
+{
+sigtab_ns3_w1 = cbind(as(sigtab_ns3_w1, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w1)[rownames(sigtab_ns3_w1), ], "matrix"))
+write.csv(sigtab_ns3_w1, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns3_w1.csv"))
+}
+#
+
+ps_prune_cheese_no_spike_w2 = subset_samples(ps_prune_cheese_no_spike, When=="Week 2")
+ps_prune_cheese_no_spike_w2_dds = phyloseq_to_deseq2(ps_prune_cheese_no_spike_w2, ~ MilkType)
+ps_prune_cheese_no_spike_w2_dds = DESeq(ps_prune_cheese_no_spike_w2_dds, test="Wald", fitType="parametric")
+res_ns1_w2 <- results(ps_prune_cheese_no_spike_w2_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_ns1_w2 = res_ns1_w2[which(res_ns1_w2$padj < alpha), ]
+if(nrow(sigtab_ns1_w2)>0)
+{
+sigtab_ns1_w2 = cbind(as(sigtab_ns1_w2, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w2)[rownames(sigtab_ns1_w2), ], "matrix"))
+write.csv(sigtab_ns1_w2, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns1_w2.csv"))
+}
+#
+res_ns2_w2 <- results( ps_prune_cheese_no_spike_w2_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_ns2_w2 = res_ns2_w2[which(res_ns2_w2$padj < alpha), ]
+if(nrow(sigtab_ns2_w2)>0)
+{
+sigtab_ns2_w2 = cbind(as(sigtab_ns2_w2, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w2)[rownames(sigtab_ns2_w2), ], "matrix"))
+write.csv(sigtab_ns2_w2, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns2_w2.csv"))
+}
+#
+res_ns3_w2 <- results( ps_prune_cheese_no_spike_w2_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_ns3_w2 = res_ns3_w2[which(res_ns3_w2$padj < alpha), ]
+if(nrow(sigtab_ns3_w2)>0)
+{
+sigtab_ns3_w2 = cbind(as(sigtab_ns3_w2, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w2)[rownames(sigtab_ns3_w2), ], "matrix"))
+write.csv(sigtab_ns3_w2, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns3_w2.csv"))
+}
+#
+
+
+ps_prune_cheese_no_spike_w3 = subset_samples(ps_prune_cheese_no_spike, When=="Week 3")
+ps_prune_cheese_no_spike_w3_dds = phyloseq_to_deseq2(ps_prune_cheese_no_spike_w3, ~ MilkType)
+ps_prune_cheese_no_spike_w3_dds = DESeq(ps_prune_cheese_no_spike_w3_dds, test="Wald", fitType="parametric")
+res_ns1_w3 <- results(ps_prune_cheese_no_spike_w3_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_ns1_w3 = res_ns1_w3[which(res_ns1_w3$padj < alpha), ]
+if(nrow(sigtab_ns1_w3)>0)
+{
+sigtab_ns1_w3 = cbind(as(sigtab_ns1_w3, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w3)[rownames(sigtab_ns1_w3), ], "matrix"))
+write.csv(sigtab_ns1_w3, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns1_w3.csv"))
+}
+#
+res_ns2_w3 <- results( ps_prune_cheese_no_spike_w3_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_ns2_w3 = res_ns2_w3[which(res_ns2_w3$padj < alpha), ]
+if(nrow(sigtab_ns2_w3)>0)
+{
+sigtab_ns2_w3 = cbind(as(sigtab_ns2_w3, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w3)[rownames(sigtab_ns2_w3), ], "matrix"))
+write.csv(sigtab_ns2_w3, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns2_w3.csv"))
+}
+#
+res_ns3_w3 <- results( ps_prune_cheese_no_spike_w3_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_ns3_w3 = res_ns3_w3[which(res_ns3_w3$padj < alpha), ]
+if(nrow(sigtab_ns3_w3)>0)
+{
+sigtab_ns3_w3 = cbind(as(sigtab_ns3_w3, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w3)[rownames(sigtab_ns3_w3), ], "matrix"))
+write.csv(sigtab_ns3_w3, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns3_w3.csv"))
+}
+#
+
+
+ps_prune_cheese_no_spike_w4 = subset_samples(ps_prune_cheese_no_spike, When=="Week 4")
+ps_prune_cheese_no_spike_w4_dds = phyloseq_to_deseq2(ps_prune_cheese_no_spike_w4, ~ MilkType)
+ps_prune_cheese_no_spike_w4_dds = DESeq(ps_prune_cheese_no_spike_w4_dds, test="Wald", fitType="parametric")
+res_ns1_w4 <- results(ps_prune_cheese_no_spike_w4_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_ns1_w4 = res_ns1_w4[which(res_ns1_w4$padj < alpha), ]
+if(nrow(sigtab_ns1_w4)>0)
+{
+sigtab_ns1_w4 = cbind(as(sigtab_ns1_w4, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w4)[rownames(sigtab_ns1_w4), ], "matrix"))
+write.csv(sigtab_ns1_w4, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns1_w4.csv"))
+}
+#
+res_ns2_w4 <- results( ps_prune_cheese_no_spike_w4_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_ns2_w4 = res_ns2_w4[which(res_ns2_w4$padj < alpha), ]
+if(nrow(sigtab_ns2_w4)>0)
+{
+sigtab_ns2_w4 = cbind(as(sigtab_ns2_w4, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w4)[rownames(sigtab_ns2_w4), ], "matrix"))
+write.csv(sigtab_ns2_w4, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns2_w4.csv"))
+}
+#
+res_ns3_w4 <- results( ps_prune_cheese_no_spike_w4_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_ns3_w4 = res_ns3_w4[which(res_ns3_w4$padj < alpha), ]
+if(nrow(sigtab_ns3_w4)>0)
+{
+sigtab_ns3_w4 = cbind(as(sigtab_ns3_w4, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w4)[rownames(sigtab_ns3_w4), ], "matrix"))
+write.csv(sigtab_ns3_w4, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns3_w4.csv"))
+}
+#
+
+ps_prune_cheese_no_spike_w5 = subset_samples(ps_prune_cheese_no_spike, When=="Week 5")
+ps_prune_cheese_no_spike_w5_dds = phyloseq_to_deseq2(ps_prune_cheese_no_spike_w5, ~ MilkType)
+ps_prune_cheese_no_spike_w5_dds = DESeq(ps_prune_cheese_no_spike_w5_dds, test="Wald", fitType="parametric")
+res_ns1_w5 <- results(ps_prune_cheese_no_spike_w5_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_ns1_w5 = res_ns1_w5[which(res_ns1_w5$padj < alpha), ]
+if(nrow(sigtab_ns1_w5)>0)
+{
+sigtab_ns1_w5 = cbind(as(sigtab_ns1_w5, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w5)[rownames(sigtab_ns1_w5), ], "matrix"))
+write.csv(sigtab_ns1_w5, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns1_w5.csv"))
+}
+#
+res_ns2_w5 <- results( ps_prune_cheese_no_spike_w5_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_ns2_w5 = res_ns2_w5[which(res_ns2_w5$padj < alpha), ]
+if(nrow(sigtab_ns2_w5)>0)
+{
+sigtab_ns2_w5 = cbind(as(sigtab_ns2_w5, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w5)[rownames(sigtab_ns2_w5), ], "matrix"))
+write.csv(sigtab_ns2_w5, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns2_w5.csv"))
+}
+#
+res_ns3_w5 <- results( ps_prune_cheese_no_spike_w5_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_ns3_w5 = res_ns3_w5[which(res_ns3_w5$padj < alpha), ]
+if(nrow(sigtab_ns3_w5)>0)
+{
+sigtab_ns3_w5 = cbind(as(sigtab_ns3_w5, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w5)[rownames(sigtab_ns3_w5), ], "matrix"))
+write.csv(sigtab_ns3_w5, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns3_w5.csv"))
+}
+#
+
+
+ps_prune_cheese_no_spike_w6 = subset_samples(ps_prune_cheese_no_spike, When=="Week 6")
+ps_prune_cheese_no_spike_w6_dds = phyloseq_to_deseq2(ps_prune_cheese_no_spike_w6, ~ MilkType)
+ps_prune_cheese_no_spike_w6_dds = DESeq(ps_prune_cheese_no_spike_w6_dds, test="Wald", fitType="parametric")
+res_ns1_w6 <- results(ps_prune_cheese_no_spike_w6_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_ns1_w6 = res_ns1_w6[which(res_ns1_w6$padj < alpha), ]
+if(nrow(sigtab_ns1_w6)>0)
+{
+sigtab_ns1_w6 = cbind(as(sigtab_ns1_w6, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w6)[rownames(sigtab_ns1_w6), ], "matrix"))
+write.csv(sigtab_ns1_w6, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns1_w6.csv"))
+}
+#
+res_ns2_w6 <- results( ps_prune_cheese_no_spike_w6_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_ns2_w6 = res_ns2_w6[which(res_ns2_w6$padj < alpha), ]
+if(nrow(sigtab_ns2_w6)>0)
+{
+sigtab_ns2_w6 = cbind(as(sigtab_ns2_w6, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w6)[rownames(sigtab_ns2_w6), ], "matrix"))
+write.csv(sigtab_ns2_w6, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns2_w6.csv"))
+}
+#
+res_ns3_w6 <- results( ps_prune_cheese_no_spike_w6_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_ns3_w6 = res_ns3_w6[which(res_ns3_w6$padj < alpha), ]
+if(nrow(sigtab_ns3_w6)>0)
+{
+sigtab_ns3_w6 = cbind(as(sigtab_ns3_w6, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w6)[rownames(sigtab_ns3_w6), ], "matrix"))
+write.csv(sigtab_ns3_w6, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns3_w6.csv"))
+}
+#
+
+
+ps_prune_cheese_no_spike_w7 = subset_samples(ps_prune_cheese_no_spike, When=="Week 7")
+ps_prune_cheese_no_spike_w7_dds = phyloseq_to_deseq2(ps_prune_cheese_no_spike_w7, ~ MilkType)
+ps_prune_cheese_no_spike_w7_dds = DESeq(ps_prune_cheese_no_spike_w7_dds, test="Wald", fitType="parametric")
+res_ns1_w7 <- results(ps_prune_cheese_no_spike_w7_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_ns1_w7 = res_ns1_w7[which(res_ns1_w7$padj < alpha), ]
+if(nrow(sigtab_ns1_w7)>0)
+{
+sigtab_ns1_w7 = cbind(as(sigtab_ns1_w7, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w7)[rownames(sigtab_ns1_w7), ], "matrix"))
+write.csv(sigtab_ns1_w7, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns1_w7.csv"))
+}
+#
+res_ns2_w7 <- results( ps_prune_cheese_no_spike_w7_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_ns2_w7 = res_ns2_w7[which(res_ns2_w7$padj < alpha), ]
+if(nrow(sigtab_ns2_w7)>0)
+{
+sigtab_ns2_w7 = cbind(as(sigtab_ns2_w7, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w7)[rownames(sigtab_ns2_w7), ], "matrix"))
+write.csv(sigtab_ns2_w7, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns2_w7.csv"))
+}
+#
+res_ns3_w7 <- results( ps_prune_cheese_no_spike_w7_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_ns3_w7 = res_ns3_w7[which(res_ns3_w7$padj < alpha), ]
+if(nrow(sigtab_ns3_w7)>0)
+{
+sigtab_ns3_w7 = cbind(as(sigtab_ns3_w7, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w7)[rownames(sigtab_ns3_w7), ], "matrix"))
+write.csv(sigtab_ns3_w7, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns3_w7.csv"))
+}
+#
+
+
+ps_prune_cheese_no_spike_w8 = subset_samples(ps_prune_cheese_no_spike, When=="Week 8")
+ps_prune_cheese_no_spike_w8_dds = phyloseq_to_deseq2(ps_prune_cheese_no_spike_w8, ~ MilkType)
+ps_prune_cheese_no_spike_w8_dds = DESeq(ps_prune_cheese_no_spike_w8_dds, test="Wald", fitType="parametric")
+res_ns1_w8 <- results(ps_prune_cheese_no_spike_w8_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_ns1_w8 = res_ns1_w8[which(res_ns1_w8$padj < alpha), ]
+if(nrow(sigtab_ns1_w8)>0)
+{
+sigtab_ns1_w8 = cbind(as(sigtab_ns1_w8, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w8)[rownames(sigtab_ns1_w8), ], "matrix"))
+write.csv(sigtab_ns1_w8, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns1_w8.csv"))
+}
+#
+res_ns2_w8 <- results( ps_prune_cheese_no_spike_w8_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_ns2_w8 = res_ns2_w8[which(res_ns2_w8$padj < alpha), ]
+if(nrow(sigtab_ns2_w8)>0)
+{
+sigtab_ns2_w8 = cbind(as(sigtab_ns2_w8, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w8)[rownames(sigtab_ns2_w8), ], "matrix"))
+write.csv(sigtab_ns2_w8, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns2_w8.csv"))
+}
+#
+res_ns3_w8 <- results( ps_prune_cheese_no_spike_w8_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_ns3_w8 = res_ns3_w8[which(res_ns3_w8$padj < alpha), ]
+if(nrow(sigtab_ns3_w8)>0)
+{
+sigtab_ns3_w8 = cbind(as(sigtab_ns3_w8, "data.frame"), as(tax_table(ps_prune_cheese_no_spike_w8)[rownames(sigtab_ns3_w8), ], "matrix"))
+write.csv(sigtab_ns3_w8, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_ns3_w8.csv"))
+}
+#
+
+
+#DA for spiked cheeses (lactococcus included)
+ps_prune_cheese_spike = subset_samples(ps_prune_cheese, Spike=="Spiked")
+ps_prune_cheese_spike_dds = phyloseq_to_deseq2(ps_prune_cheese_spike, ~ MilkType)
+ps_prune_cheese_spike_dds = DESeq(ps_prune_cheese_spike_dds, test="Wald", fitType="parametric")
+res_ns1 <- results(ps_prune_cheese_spike_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_s1 = res_s1[which(res_s1$padj < alpha), ]
+if(nrow(sigtab_s1)>0)
+{
+sigtab_s1 = cbind(as(sigtab_s1, "data.frame"), as(tax_table(ps_prune_cheese_spike)[rownames(sigtab_s1), ], "matrix"))
+write.csv(sigtab_s1, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/s1.csv"))
+}
+#
+res_s2 <- results( ps_prune_cheese_spike_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_s2 = res_s2[which(res_s2$padj < alpha), ]
+if(nrow(sigtab_s2)>0)
+{
+sigtab_s2 = cbind(as(sigtab_s2, "data.frame"), as(tax_table(ps_prune_cheese_spike)[rownames(sigtab_s2), ], "matrix"))
+write.csv(sigtab_s2, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/s2.csv"))
+}
+#
+res_s3 <- results( ps_prune_cheese_spike_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_s3 = res_s3[which(res_s3$padj < alpha), ]
+if(nrow(sigtab_s3)>0)
+{
+sigtab_s3 = cbind(as(sigtab_s3, "data.frame"), as(tax_table(ps_prune_cheese_spike)[rownames(sigtab_s3), ], "matrix"))
+write.csv(sigtab_s3, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/s3.csv"))
+}
+
+
+ps_prune_cheese_spike_w1 = subset_samples(ps_prune_cheese_spike, When=="Week 1")
+ps_prune_cheese_spike_w1_dds = phyloseq_to_deseq2(ps_prune_cheese_spike_w1, ~ MilkType)
+ps_prune_cheese_spike_w1_dds = DESeq(ps_prune_cheese_spike_w1_dds, test="Wald", fitType="parametric")
+res_s1_w1 <- results(ps_prune_cheese_spike_w1_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_s1_w1 = res_s1_w1[which(res_s1_w1$padj < alpha), ]
+if(nrow(sigtab_s1_w1)>0)
+{
+sigtab_s1_w1 = cbind(as(sigtab_s1_w1, "data.frame"), as(tax_table(ps_prune_cheese_spike_w1)[rownames(sigtab_s1_w1), ], "matrix"))
+write.csv(sigtab_s1_w1, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s1_w1.csv"))
+}
+#
+res_s2_w1 <- results( ps_prune_cheese_spike_w1_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_s2_w1 = res_s2_w1[which(res_s2_w1$padj < alpha), ]
+if(nrow(sigtab_s2_w1)>0)
+{
+sigtab_s2_w1 = cbind(as(sigtab_s2_w1, "data.frame"), as(tax_table(ps_prune_cheese_spike_w1)[rownames(sigtab_s2_w1), ], "matrix"))
+write.csv(sigtab_s2_w1, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s2_w1.csv"))
+}
+#
+res_s3_w1 <- results( ps_prune_cheese_spike_w1_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_s3_w1 = res_s3_w1[which(res_s3_w1$padj < alpha), ]
+if(nrow(sigtab_s3_w1)>0)
+{
+sigtab_s3_w1 = cbind(as(sigtab_s3_w1, "data.frame"), as(tax_table(ps_prune_cheese_spike_w1)[rownames(sigtab_s3_w1), ], "matrix"))
+write.csv(sigtab_s3_w1, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s3_w1.csv"))
+}
+#
+
+
+ps_prune_cheese_spike_w2 = subset_samples(ps_prune_cheese_spike, When=="Week 2")
+ps_prune_cheese_spike_w2_dds = phyloseq_to_deseq2(ps_prune_cheese_spike_w2, ~ MilkType)
+ps_prune_cheese_spike_w2_dds = DESeq(ps_prune_cheese_spike_w2_dds, test="Wald", fitType="parametric")
+res_s1_w2 <- results(ps_prune_cheese_spike_w2_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_s1_w2 = res_s1_w2[which(res_s1_w2$padj < alpha), ]
+if(nrow(sigtab_s1_w2)>0)
+{
+sigtab_s1_w2 = cbind(as(sigtab_s1_w2, "data.frame"), as(tax_table(ps_prune_cheese_spike_w2)[rownames(sigtab_s1_w2), ], "matrix"))
+write.csv(sigtab_s1_w2, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s1_w2.csv"))
+}
+#
+res_s2_w2 <- results( ps_prune_cheese_spike_w2_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_s2_w2 = res_s2_w2[which(res_s2_w2$padj < alpha), ]
+if(nrow(sigtab_s2_w2)>0)
+{
+sigtab_s2_w2 = cbind(as(sigtab_s2_w2, "data.frame"), as(tax_table(ps_prune_cheese_spike_w2)[rownames(sigtab_s2_w2), ], "matrix"))
+write.csv(sigtab_s2_w2, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s2_w2.csv"))
+}
+#
+res_s3_w2 <- results( ps_prune_cheese_spike_w2_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_s3_w2 = res_s3_w2[which(res_s3_w2$padj < alpha), ]
+if(nrow(sigtab_s3_w2)>0)
+{
+sigtab_s3_w2 = cbind(as(sigtab_s3_w2, "data.frame"), as(tax_table(ps_prune_cheese_spike_w2)[rownames(sigtab_s3_w2), ], "matrix"))
+write.csv(sigtab_s3_w2, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s3_w2.csv"))
+}
+#
+
+
+ps_prune_cheese_spike_w3 = subset_samples(ps_prune_cheese_spike, When=="Week 3")
+ps_prune_cheese_spike_w3_dds = phyloseq_to_deseq2(ps_prune_cheese_spike_w3, ~ MilkType)
+ps_prune_cheese_spike_w3_dds = DESeq(ps_prune_cheese_spike_w3_dds, test="Wald", fitType="parametric")
+res_s1_w3 <- results(ps_prune_cheese_spike_w3_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_s1_w3 = res_s1_w3[which(res_s1_w3$padj < alpha), ]
+if(nrow(sigtab_s1_w3)>0)
+{
+sigtab_s1_w3 = cbind(as(sigtab_s1_w3, "data.frame"), as(tax_table(ps_prune_cheese_spike_w3)[rownames(sigtab_s1_w3), ], "matrix"))
+write.csv(sigtab_s1_w3, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s1_w3.csv"))
+}
+#
+res_s2_w3 <- results( ps_prune_cheese_spike_w3_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_s2_w3 = res_s2_w3[which(res_s2_w3$padj < alpha), ]
+if(nrow(sigtab_s2_w3)>0)
+{
+sigtab_s2_w3 = cbind(as(sigtab_s2_w3, "data.frame"), as(tax_table(ps_prune_cheese_spike_w3)[rownames(sigtab_s2_w3), ], "matrix"))
+write.csv(sigtab_s2_w3, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s2_w3.csv"))
+}
+#
+res_s3_w3 <- results( ps_prune_cheese_spike_w3_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_s3_w3 = res_s3_w3[which(res_s3_w3$padj < alpha), ]
+if(nrow(sigtab_s3_w3)>0)
+{
+sigtab_s3_w3 = cbind(as(sigtab_s3_w3, "data.frame"), as(tax_table(ps_prune_cheese_spike_w3)[rownames(sigtab_s3_w3), ], "matrix"))
+write.csv(sigtab_s3_w3, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s3_w3.csv"))
+}
+#
+
+
+ps_prune_cheese_spike_w4 = subset_samples(ps_prune_cheese_spike, When=="Week 4")
+ps_prune_cheese_spike_w4_dds = phyloseq_to_deseq2(ps_prune_cheese_spike_w4, ~ MilkType)
+ps_prune_cheese_spike_w4_dds = DESeq(ps_prune_cheese_spike_w4_dds, test="Wald", fitType="parametric")
+res_s1_w4 <- results(ps_prune_cheese_spike_w4_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_s1_w4 = res_s1_w4[which(res_s1_w4$padj < alpha), ]
+if(nrow(sigtab_s1_w4)>0)
+{
+sigtab_s1_w4 = cbind(as(sigtab_s1_w4, "data.frame"), as(tax_table(ps_prune_cheese_spike_w4)[rownames(sigtab_s1_w4), ], "matrix"))
+write.csv(sigtab_s1_w4, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s1_w4.csv"))
+}
+#
+res_s2_w4 <- results( ps_prune_cheese_spike_w4_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_s2_w4 = res_s2_w4[which(res_s2_w4$padj < alpha), ]
+if(nrow(sigtab_s2_w4)>0)
+{
+sigtab_s2_w4 = cbind(as(sigtab_s2_w4, "data.frame"), as(tax_table(ps_prune_cheese_spike_w4)[rownames(sigtab_s2_w4), ], "matrix"))
+write.csv(sigtab_s2_w4, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s2_w4.csv"))
+}
+#
+res_s3_w4 <- results( ps_prune_cheese_spike_w4_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_s3_w4 = res_s3_w4[which(res_s3_w4$padj < alpha), ]
+if(nrow(sigtab_s3_w4)>0)
+{
+sigtab_s3_w4 = cbind(as(sigtab_s3_w4, "data.frame"), as(tax_table(ps_prune_cheese_spike_w4)[rownames(sigtab_s3_w4), ], "matrix"))
+write.csv(sigtab_s3_w4, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s3_w4.csv"))
+}
+#
+
+
+ps_prune_cheese_spike_w5 = subset_samples(ps_prune_cheese_spike, When=="Week 5")
+ps_prune_cheese_spike_w5_dds = phyloseq_to_deseq2(ps_prune_cheese_spike_w5, ~ MilkType)
+ps_prune_cheese_spike_w5_dds = DESeq(ps_prune_cheese_spike_w5_dds, test="Wald", fitType="parametric")
+res_s1_w5 <- results(ps_prune_cheese_spike_w5_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_s1_w5 = res_s1_w5[which(res_s1_w5$padj < alpha), ]
+if(nrow(sigtab_s1_w5)>0)
+{
+sigtab_s1_w5 = cbind(as(sigtab_s1_w5, "data.frame"), as(tax_table(ps_prune_cheese_spike_w5)[rownames(sigtab_s1_w5), ], "matrix"))
+write.csv(sigtab_s1_w5, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s1_w5.csv"))
+}
+#
+res_s2_w5 <- results( ps_prune_cheese_spike_w5_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_s2_w5 = res_s2_w5[which(res_s2_w5$padj < alpha), ]
+if(nrow(sigtab_s2_w5)>0)
+{
+sigtab_s2_w5 = cbind(as(sigtab_s2_w5, "data.frame"), as(tax_table(ps_prune_cheese_spike_w5)[rownames(sigtab_s2_w5), ], "matrix"))
+write.csv(sigtab_s2_w5, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s2_w5.csv"))
+}
+#
+res_s3_w5 <- results( ps_prune_cheese_spike_w5_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_s3_w5 = res_s3_w5[which(res_s3_w5$padj < alpha), ]
+if(nrow(sigtab_s3_w5)>0)
+{
+sigtab_s3_w5 = cbind(as(sigtab_s3_w5, "data.frame"), as(tax_table(ps_prune_cheese_spike_w5)[rownames(sigtab_s3_w5), ], "matrix"))
+write.csv(sigtab_s3_w5, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s3_w5.csv"))
+}
+#
+
+
+#
+ps_prune_cheese_spike_w6 = subset_samples(ps_prune_cheese_spike, When=="Week 6")
+ps_prune_cheese_spike_w6_dds = phyloseq_to_deseq2(ps_prune_cheese_spike_w6, ~ MilkType)
+ps_prune_cheese_spike_w6_dds = DESeq(ps_prune_cheese_spike_w6_dds, test="Wald", fitType="parametric")
+res_s1_w6 <- results(ps_prune_cheese_spike_w6_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_s1_w6 = res_s1_w6[which(res_s1_w6$padj < alpha), ]
+if(nrow(sigtab_s1_w6)>0)
+{
+sigtab_s1_w6 = cbind(as(sigtab_s1_w6, "data.frame"), as(tax_table(ps_prune_cheese_spike_w6)[rownames(sigtab_s1_w6), ], "matrix"))
+write.csv(sigtab_s1_w6, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s1_w6.csv"))
+}
+#
+res_s2_w6 <- results( ps_prune_cheese_spike_w6_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_s2_w6 = res_s2_w6[which(res_s2_w6$padj < alpha), ]
+if(nrow(sigtab_s2_w6)>0)
+{
+sigtab_s2_w6 = cbind(as(sigtab_s2_w6, "data.frame"), as(tax_table(ps_prune_cheese_spike_w6)[rownames(sigtab_s2_w6), ], "matrix"))
+write.csv(sigtab_s2_w6, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s2_w6.csv"))
+}
+#
+res_s3_w6 <- results( ps_prune_cheese_spike_w6_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_s3_w6 = res_s3_w6[which(res_s3_w6$padj < alpha), ]
+if(nrow(sigtab_s3_w6)>0)
+{
+sigtab_s3_w6 = cbind(as(sigtab_s3_w6, "data.frame"), as(tax_table(ps_prune_cheese_spike_w6)[rownames(sigtab_s3_w6), ], "matrix"))
+write.csv(sigtab_s3_w6, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s3_w6.csv"))
+}
+#
+
+
+ps_prune_cheese_spike_w7 = subset_samples(ps_prune_cheese_spike, When=="Week 7")
+ps_prune_cheese_spike_w7_dds = phyloseq_to_deseq2(ps_prune_cheese_spike_w7, ~ MilkType)
+ps_prune_cheese_spike_w7_dds = DESeq(ps_prune_cheese_spike_w7_dds, test="Wald", fitType="parametric")
+res_s1_w7 <- results(ps_prune_cheese_spike_w7_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_s1_w7 = res_s1_w7[which(res_s1_w7$padj < alpha), ]
+if(nrow(sigtab_s1_w7)>0)
+{
+sigtab_s1_w7 = cbind(as(sigtab_s1_w7, "data.frame"), as(tax_table(ps_prune_cheese_spike_w7)[rownames(sigtab_s1_w7), ], "matrix"))
+write.csv(sigtab_s1_w7, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s1_w7.csv"))
+}
+#
+res_s2_w7 <- results( ps_prune_cheese_spike_w7_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_s2_w7 = res_s2_w7[which(res_s2_w7$padj < alpha), ]
+if(nrow(sigtab_s2_w7)>0)
+{
+sigtab_s2_w7 = cbind(as(sigtab_s2_w7, "data.frame"), as(tax_table(ps_prune_cheese_spike_w7)[rownames(sigtab_s2_w7), ], "matrix"))
+write.csv(sigtab_s2_w7, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s2_w7.csv"))
+}
+#
+res_s3_w7 <- results( ps_prune_cheese_spike_w7_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_s3_w7 = res_s3_w7[which(res_s3_w7$padj < alpha), ]
+if(nrow(sigtab_s3_w7)>0)
+{
+sigtab_s3_w7 = cbind(as(sigtab_s3_w7, "data.frame"), as(tax_table(ps_prune_cheese_spike_w7)[rownames(sigtab_s3_w7), ], "matrix"))
+write.csv(sigtab_s3_w7, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s3_w7.csv"))
+}
+#
+
+
+ps_prune_cheese_spike_w8 = subset_samples(ps_prune_cheese_spike, When=="Week 8")
+ps_prune_cheese_spike_w8_dds = phyloseq_to_deseq2(ps_prune_cheese_spike_w8, ~ MilkType)
+ps_prune_cheese_spike_w8_dds = DESeq(ps_prune_cheese_spike_w8_dds, test="Wald", fitType="parametric")
+res_s1_w8 <- results(ps_prune_cheese_spike_w8_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_s1_w8 = res_s1_w8[which(res_s1_w8$padj < alpha), ]
+if(nrow(sigtab_s1_w8)>0)
+{
+sigtab_s1_w8 = cbind(as(sigtab_s1_w8, "data.frame"), as(tax_table(ps_prune_cheese_spike_w8)[rownames(sigtab_s1_w8), ], "matrix"))
+write.csv(sigtab_s1_w8, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s1_w8.csv"))
+}
+#
+res_s2_w8 <- results( ps_prune_cheese_spike_w8_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_s2_w8 = res_s2_w8[which(res_s2_w8$padj < alpha), ]
+if(nrow(sigtab_s2_w8)>0)
+{
+sigtab_s2_w8 = cbind(as(sigtab_s2_w8, "data.frame"), as(tax_table(ps_prune_cheese_spike_w8)[rownames(sigtab_s2_w8), ], "matrix"))
+write.csv(sigtab_s2_w8, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s2_w8.csv"))
+}
+#
+res_s3_w8 <- results( ps_prune_cheese_spike_w8_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_s3_w8 = res_s3_w8[which(res_s3_w8$padj < alpha), ]
+if(nrow(sigtab_s3_w8)>0)
+{
+sigtab_s3_w8 = cbind(as(sigtab_s3_w8, "data.frame"), as(tax_table(ps_prune_cheese_spike_w8)[rownames(sigtab_s3_w8), ], "matrix"))
+write.csv(sigtab_s3_w8, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_s3_w8.csv"))
+}
+#
+
+Combined DA
+ps_prune_cheese
+ps_prune_cheese_dds = phyloseq_to_deseq2(ps_prune_cheese, ~ MilkType)
+ps_prune_cheese_dds = DESeq(ps_prune_cheese_dds, test="Wald", fitType="parametric")
+res_C1 <- results(ps_prune_cheese_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_C1 = res_C1[which(res_C1$padj < alpha), ]
+if(nrow(sigtab_C1)>0)
+{
+sigtab_C1 = cbind(as(sigtab_C1, "data.frame"), as(tax_table(ps_prune_cheese)[rownames(sigtab_C1), ], "matrix"))
+write.csv(sigtab_C1, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/C1.csv"))
+}
+#
+res_C2 <- results( ps_prune_cheese_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_C2 = res_C2[which(res_C2$padj < alpha), ]
+if(nrow(sigtab_C2)>0)
+{
+sigtab_C2 = cbind(as(sigtab_C2, "data.frame"), as(tax_table(ps_prune_cheese)[rownames(sigtab_C2), ], "matrix"))
+write.csv(sigtab_C2, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/C2.csv"))
+}
+#
+res_C3 <- results( ps_prune_cheese_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_C3 = res_C3[which(res_C3$padj < alpha), ]
+if(nrow(sigtab_C3)>0)
+{
+sigtab_C3 = cbind(as(sigtab_C3, "data.frame"), as(tax_table(ps_prune_cheese)[rownames(sigtab_C3), ], "matrix"))
+write.csv(sigtab_C3, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/C3.csv"))
+}
+
+
+ps_prune_cheese_w1 = subset_samples(ps_prune_cheese, When=="Week 1")
+ps_prune_cheese_w1_dds = phyloseq_to_deseq2(ps_prune_cheese_w1, ~ MilkType)
+ps_prune_cheese_w1_dds = DESeq(ps_prune_cheese_w1_dds, test="Wald", fitType="parametric")
+res_C1_w1 <- results(ps_prune_cheese_w1_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_C1_w1 = res_C1_w1[which(res_C1_w1$padj < alpha), ]
+if(nrow(sigtab_C1_w1)>0)
+{
+sigtab_C1_w1 = cbind(as(sigtab_C1_w1, "data.frame"), as(tax_table(ps_prune_cheese_w1)[rownames(sigtab_C1_w1), ], "matrix"))
+write.csv(sigtab_C1_w1, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C1_w1.csv"))
+}
+#
+res_C2_w1 <- results( ps_prune_cheese_w1_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_C2_w1 = res_C2_w1[which(res_C2_w1$padj < alpha), ]
+if(nrow(sigtab_C2_w1)>0)
+{
+sigtab_C2_w1 = cbind(as(sigtab_C2_w1, "data.frame"), as(tax_table(ps_prune_cheese_w1)[rownames(sigtab_C2_w1), ], "matrix"))
+write.csv(sigtab_C2_w1, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C2_w1.csv"))
+}
+#
+res_C3_w1 <- results( ps_prune_cheese_w1_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_C3_w1 = res_C3_w1[which(res_C3_w1$padj < alpha), ]
+if(nrow(sigtab_C3_w1)>0)
+{
+sigtab_C3_w1 = cbind(as(sigtab_C3_w1, "data.frame"), as(tax_table(ps_prune_cheese_w1)[rownames(sigtab_C3_w1), ], "matrix"))
+write.csv(sigtab_C3_w1, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C3_w1.csv"))
+}
+#
+
+ps_prune_cheese_w2 = subset_samples(ps_prune_cheese, When=="Week 2")
+ps_prune_cheese_w2_dds = phyloseq_to_deseq2(ps_prune_cheese_w2, ~ MilkType)
+ps_prune_cheese_w2_dds = DESeq(ps_prune_cheese_w2_dds, test="Wald", fitType="parametric")
+res_C1_w2 <- results(ps_prune_cheese_w2_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_C1_w2 = res_C1_w2[which(res_C1_w2$padj < alpha), ]
+if(nrow(sigtab_C1_w2)>0)
+{
+sigtab_C1_w2 = cbind(as(sigtab_C1_w2, "data.frame"), as(tax_table(ps_prune_cheese_w2)[rownames(sigtab_C1_w2), ], "matrix"))
+write.csv(sigtab_C1_w2, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C1_w2.csv"))
+}
+#
+res_C2_w2 <- results( ps_prune_cheese_w2_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_C2_w2 = res_C2_w2[which(res_C2_w2$padj < alpha), ]
+if(nrow(sigtab_C2_w2)>0)
+{
+sigtab_C2_w2 = cbind(as(sigtab_C2_w2, "data.frame"), as(tax_table(ps_prune_cheese_w2)[rownames(sigtab_C2_w2), ], "matrix"))
+write.csv(sigtab_C2_w2, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C2_w2.csv"))
+}
+#
+res_C3_w2 <- results( ps_prune_cheese_w2_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_C3_w2 = res_C3_w2[which(res_C3_w2$padj < alpha), ]
+if(nrow(sigtab_C3_w2)>0)
+{
+sigtab_C3_w2 = cbind(as(sigtab_C3_w2, "data.frame"), as(tax_table(ps_prune_cheese_w2)[rownames(sigtab_C3_w2), ], "matrix"))
+write.csv(sigtab_C3_w2, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C3_w2.csv"))
+}
+#
+
+ps_prune_cheese_w3 = subset_samples(ps_prune_cheese, When=="Week 3")
+ps_prune_cheese_w3_dds = phyloseq_to_deseq2(ps_prune_cheese_w3, ~ MilkType)
+ps_prune_cheese_w3_dds = DESeq(ps_prune_cheese_w3_dds, test="Wald", fitType="parametric")
+res_C1_w3 <- results(ps_prune_cheese_w3_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_C1_w3 = res_C1_w3[which(res_C1_w3$padj < alpha), ]
+if(nrow(sigtab_C1_w3)>0)
+{
+sigtab_C1_w3 = cbind(as(sigtab_C1_w3, "data.frame"), as(tax_table(ps_prune_cheese_w3)[rownames(sigtab_C1_w3), ], "matrix"))
+write.csv(sigtab_C1_w3, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C1_w3.csv"))
+}
+#
+res_C2_w3 <- results( ps_prune_cheese_w3_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_C2_w3 = res_C2_w3[which(res_C2_w3$padj < alpha), ]
+if(nrow(sigtab_C2_w3)>0)
+{
+sigtab_C2_w3 = cbind(as(sigtab_C2_w3, "data.frame"), as(tax_table(ps_prune_cheese_w3)[rownames(sigtab_C2_w3), ], "matrix"))
+write.csv(sigtab_C2_w3, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C2_w3.csv"))
+}
+#
+res_C3_w3 <- results( ps_prune_cheese_w3_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_C3_w3 = res_C3_w3[which(res_C3_w3$padj < alpha), ]
+if(nrow(sigtab_C3_w3)>0)
+{
+sigtab_C3_w3 = cbind(as(sigtab_C3_w3, "data.frame"), as(tax_table(ps_prune_cheese_w3)[rownames(sigtab_C3_w3), ], "matrix"))
+write.csv(sigtab_C3_w3, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C3_w3.csv"))
+}
+#
+ps_prune_cheese_w4 = subset_samples(ps_prune_cheese, When=="Week 4")
+ps_prune_cheese_w4_dds = phyloseq_to_deseq2(ps_prune_cheese_w4, ~ MilkType)
+ps_prune_cheese_w4_dds = DESeq(ps_prune_cheese_w4_dds, test="Wald", fitType="parametric")
+res_C1_w4 <- results(ps_prune_cheese_w4_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_C1_w4 = res_C1_w4[which(res_C1_w4$padj < alpha), ]
+if(nrow(sigtab_C1_w4)>0)
+{
+sigtab_C1_w4 = cbind(as(sigtab_C1_w4, "data.frame"), as(tax_table(ps_prune_cheese_w4)[rownames(sigtab_C1_w4), ], "matrix"))
+write.csv(sigtab_C1_w4, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C1_w4.csv"))
+}
+#
+res_C2_w4 <- results( ps_prune_cheese_w4_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_C2_w4 = res_C2_w4[which(res_C2_w4$padj < alpha), ]
+if(nrow(sigtab_C2_w4)>0)
+{
+sigtab_C2_w4 = cbind(as(sigtab_C2_w4, "data.frame"), as(tax_table(ps_prune_cheese_w4)[rownames(sigtab_C2_w4), ], "matrix"))
+write.csv(sigtab_C2_w4, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C2_w4.csv"))
+}
+#
+res_C3_w4 <- results( ps_prune_cheese_w4_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_C3_w4 = res_C3_w4[which(res_C3_w4$padj < alpha), ]
+if(nrow(sigtab_C3_w4)>0)
+{
+sigtab_C3_w4 = cbind(as(sigtab_C3_w4, "data.frame"), as(tax_table(ps_prune_cheese_w4)[rownames(sigtab_C3_w4), ], "matrix"))
+write.csv(sigtab_C3_w4, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C3_w4.csv"))
+}
+#
+
+ps_prune_cheese_w5 = subset_samples(ps_prune_cheese, When=="Week 5")
+ps_prune_cheese_w5_dds = phyloseq_to_deseq2(ps_prune_cheese_w5, ~ MilkType)
+ps_prune_cheese_w5_dds = DESeq(ps_prune_cheese_w5_dds, test="Wald", fitType="parametric")
+res_C1_w5 <- results(ps_prune_cheese_w5_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_C1_w5 = res_C1_w5[which(res_C1_w5$padj < alpha), ]
+if(nrow(sigtab_C1_w5)>0)
+{
+sigtab_C1_w5 = cbind(as(sigtab_C1_w5, "data.frame"), as(tax_table(ps_prune_cheese_w5)[rownames(sigtab_C1_w5), ], "matrix"))
+write.csv(sigtab_C1_w5, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C1_w5.csv"))
+}
+#
+res_C2_w5 <- results( ps_prune_cheese_w5_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_C2_w5 = res_C2_w5[which(res_C2_w5$padj < alpha), ]
+if(nrow(sigtab_C2_w5)>0)
+{
+sigtab_C2_w5 = cbind(as(sigtab_C2_w5, "data.frame"), as(tax_table(ps_prune_cheese_w5)[rownames(sigtab_C2_w5), ], "matrix"))
+write.csv(sigtab_C2_w5, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C2_w5.csv"))
+}
+#
+res_C3_w5 <- results( ps_prune_cheese_w5_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_C3_w5 = res_C3_w5[which(res_C3_w5$padj < alpha), ]
+if(nrow(sigtab_C3_w5)>0)
+{
+sigtab_C3_w5 = cbind(as(sigtab_C3_w5, "data.frame"), as(tax_table(ps_prune_cheese_w5)[rownames(sigtab_C3_w5), ], "matrix"))
+write.csv(sigtab_C3_w5, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C3_w5.csv"))
+}
+#
+
+ps_prune_cheese_w6 = subset_samples(ps_prune_cheese, When=="Week 6")
+ps_prune_cheese_w6_dds = phyloseq_to_deseq2(ps_prune_cheese_w6, ~ MilkType)
+ps_prune_cheese_w6_dds = DESeq(ps_prune_cheese_w6_dds, test="Wald", fitType="parametric")
+res_C1_w6 <- results(ps_prune_cheese_w6_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_C1_w6 = res_C1_w6[which(res_C1_w6$padj < alpha), ]
+if(nrow(sigtab_C1_w6)>0)
+{
+sigtab_C1_w6 = cbind(as(sigtab_C1_w6, "data.frame"), as(tax_table(ps_prune_cheese_w6)[rownames(sigtab_C1_w6), ], "matrix"))
+write.csv(sigtab_C1_w6, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C1_w6.csv"))
+}
+#
+res_C2_w6 <- results( ps_prune_cheese_w6_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_C2_w6 = res_C2_w6[which(res_C2_w6$padj < alpha), ]
+if(nrow(sigtab_C2_w6)>0)
+{
+sigtab_C2_w6 = cbind(as(sigtab_C2_w6, "data.frame"), as(tax_table(ps_prune_cheese_w6)[rownames(sigtab_C2_w6), ], "matrix"))
+write.csv(sigtab_C2_w6, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C2_w6.csv"))
+}
+#
+res_C3_w6 <- results( ps_prune_cheese_w6_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_C3_w6 = res_C3_w6[which(res_C3_w6$padj < alpha), ]
+if(nrow(sigtab_C3_w6)>0)
+{
+sigtab_C3_w6 = cbind(as(sigtab_C3_w6, "data.frame"), as(tax_table(ps_prune_cheese_w6)[rownames(sigtab_C3_w6), ], "matrix"))
+write.csv(sigtab_C3_w6, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C3_w6.csv"))
+}
+#
+
+ps_prune_cheese_w7 = subset_samples(ps_prune_cheese, When=="Week 7")
+ps_prune_cheese_w7_dds = phyloseq_to_deseq2(ps_prune_cheese_w7, ~ MilkType)
+ps_prune_cheese_w7_dds = DESeq(ps_prune_cheese_w7_dds, test="Wald", fitType="parametric")
+res_C1_w7 <- results(ps_prune_cheese_w7_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_C1_w7 = res_C1_w7[which(res_C1_w7$padj < alpha), ]
+if(nrow(sigtab_C1_w7)>0)
+{
+sigtab_C1_w7 = cbind(as(sigtab_C1_w7, "data.frame"), as(tax_table(ps_prune_cheese_w7)[rownames(sigtab_C1_w7), ], "matrix"))
+write.csv(sigtab_C1_w7, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C1_w7.csv"))
+}
+#
+res_C2_w7 <- results( ps_prune_cheese_w7_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_C2_w7 = res_C2_w7[which(res_C2_w7$padj < alpha), ]
+if(nrow(sigtab_C2_w7)>0)
+{
+sigtab_C2_w7 = cbind(as(sigtab_C2_w7, "data.frame"), as(tax_table(ps_prune_cheese_w7)[rownames(sigtab_C2_w7), ], "matrix"))
+write.csv(sigtab_C2_w7, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C2_w7.csv"))
+}
+#
+res_C3_w7 <- results( ps_prune_cheese_w7_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_C3_w7 = res_C3_w7[which(res_C3_w7$padj < alpha), ]
+if(nrow(sigtab_C3_w7)>0)
+{
+sigtab_C3_w7 = cbind(as(sigtab_C3_w7, "data.frame"), as(tax_table(ps_prune_cheese_w7)[rownames(sigtab_C3_w7), ], "matrix"))
+write.csv(sigtab_C3_w7, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C3_w7.csv"))
+}
+#
+
+ps_prune_cheese_w8 = subset_samples(ps_prune_cheese, When=="Week 8")
+ps_prune_cheese_w8_dds = phyloseq_to_deseq2(ps_prune_cheese_w8, ~ MilkType)
+ps_prune_cheese_w8_dds = DESeq(ps_prune_cheese_w8_dds, test="Wald", fitType="parametric")
+res_C1_w8 <- results(ps_prune_cheese_w8_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_C1_w8 = res_C1_w8[which(res_C1_w8$padj < alpha), ]
+if(nrow(sigtab_C1_w8)>0)
+{
+sigtab_C1_w8 = cbind(as(sigtab_C1_w8, "data.frame"), as(tax_table(ps_prune_cheese_w8)[rownames(sigtab_C1_w8), ], "matrix"))
+write.csv(sigtab_C1_w8, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C1_w8.csv"))
+}
+#
+res_C2_w8 <- results( ps_prune_cheese_w8_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_C2_w8 = res_C2_w8[which(res_C2_w8$padj < alpha), ]
+if(nrow(sigtab_C2_w8)>0)
+{
+sigtab_C2_w8 = cbind(as(sigtab_C2_w8, "data.frame"), as(tax_table(ps_prune_cheese_w8)[rownames(sigtab_C2_w8), ], "matrix"))
+write.csv(sigtab_C2_w8, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C2_w8.csv"))
+}
+#
+res_C3_w8 <- results( ps_prune_cheese_w8_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_C3_w8 = res_C3_w8[which(res_C3_w8$padj < alpha), ]
+if(nrow(sigtab_C3_w8)>0)
+{
+sigtab_C3_w8 = cbind(as(sigtab_C3_w8, "data.frame"), as(tax_table(ps_prune_cheese_w8)[rownames(sigtab_C3_w8), ], "matrix"))
+write.csv(sigtab_C3_w8, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C3_w8.csv"))
+}
+#
+
+ps_prune_cheese_wC = subset_samples(ps_prune_cheese, When=="Core Sample")
+ps_prune_cheese_wC_dds = phyloseq_to_deseq2(ps_prune_cheese_wC, ~ MilkType)
+ps_prune_cheese_wC_dds = DESeq(ps_prune_cheese_wC_dds, test="Wald", fitType="parametric")
+res_C1_wC <- results(ps_prune_cheese_wC_dds, contrast = c("MilkType", "Raw hLZ", "Raw WT") )
+sigtab_C1_wC = res_C1_wC[which(res_C1_wC$padj < alpha), ]
+if(nrow(sigtab_C1_wC)>0)
+{
+sigtab_C1_wC = cbind(as(sigtab_C1_wC, "data.frame"), as(tax_table(ps_prune_cheese_wC)[rownames(sigtab_C1_wC), ], "matrix"))
+write.csv(sigtab_C1_wC, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C1_wC.csv"))
+}
+#
+res_C2_wC <- results( ps_prune_cheese_wC_dds, contrast = c("MilkType", "WT + LZ", "Raw WT") )
+sigtab_C2_wC = res_C2_wC[which(res_C2_wC$padj < alpha), ]
+if(nrow(sigtab_C2_wC)>0)
+{
+sigtab_C2_wC = cbind(as(sigtab_C2_wC, "data.frame"), as(tax_table(ps_prune_cheese_wC)[rownames(sigtab_C2_wC), ], "matrix"))
+write.csv(sigtab_C2_wC, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C2_wC.csv"))
+}
+#
+res_C3_wC <- results( ps_prune_cheese_wC_dds, contrast = c("MilkType", "Raw hLZ", "WT + LZ") )
+sigtab_C3_wC = res_C3_wC[which(res_C3_wC$padj < alpha), ]
+if(nrow(sigtab_C3_wC)>0)
+{
+sigtab_C3_wC = cbind(as(sigtab_C3_wC, "data.frame"), as(tax_table(ps_prune_cheese_wC)[rownames(sigtab_C3_wC), ], "matrix"))
+write.csv(sigtab_C3_wC, file.path("C:/Users/Tyler/Documents/Grad Skool/DA data/1alpha/sigtab_C3_wC.csv"))
+}
+#
+
+#Psychrotroph counts
+ps_prune_milk <- subset_samples(ps_prune_graph, SamType=="Goat Milk")
+ps_prune_milk_pseudomonas = subset_taxa(ps_prune_milk, Genus == "g__Pseudomonas")
+ps_prune_milk_yersinia = subset_taxa(ps_prune_milk, Genus == "g__Yersinia")
+
